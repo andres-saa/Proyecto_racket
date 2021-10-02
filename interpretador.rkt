@@ -25,9 +25,9 @@
 ;;                  ::= cons { <identifier> = <expression> }*(,) in <expression>
 ;;                      <cons-exp (ids rands body)>
 ;;                  ::= rec { <identifier> ( { <identifier> }*(,) ) = <expression> }* in <expression>
-;;                      <rec-exp (proc-names idss bodies bodyrec)>
-;;	            ::= proc ( { <identifier> }*(,) )  <expression> 
-;;                      <proc-exp ( idss bodies )>
+;;                      <rec-exp (function-names idss bodies bodyrec)>
+;;	            ::= function ( { <identifier> }*(,) )  <expression> 
+;;                      <function-exp ( idss bodies )>
 ;;                  ::= unic { <identifier> = <expression> }*(,) in <expression>
 ;;                      <unic-exp (ids rands body)>
 ;;                  ::= sequence {<expression>+(;)} end
@@ -41,9 +41,9 @@
 ;;                  ::= for <identifier> = <expression> (to | downto) <expression> do <expression> done
 ;;                      <for-exp (id exp1 exp2 exp3)>
 ;;                  ::= (<expression> {<expression>}*)
-;;                      <app-exp proc rands>
+;;                      <app-exp function rands>
 ;;                  ::= letrec  {identifier ({identifier}*(,)) = <expression>}* in <expression>
-;;                     <letrec-exp(proc-names idss bodies bodyletrec)>
+;;                     <letrec-exp(function-names idss bodies bodyletrec)>
 ;;                  ::= set <identifier> = <expression>
 ;;                     <set-exp (id rhsexp)>
 ;;                  ::= {(<expression> <primitive> <expression>)}*(,))
@@ -122,7 +122,7 @@
     (expression ("var" "(" ( separated-list identifier "="  expression ",") ")" "in" expression ) var-exp)
     (expression ("cons" "(" ( separated-list identifier "="  expression ",") ")" "in" expression ) cons-exp)
     (expression ("rec" (arbno identifier "(" (separated-list identifier ",") ")"  "=" expression) "in"  expression "end") rec-exp) 
-    (expression ("proc" "(" (arbno identifier) ")" expression)  proc-exp)
+    (expression ("function" "(" (separated-list identifier ",") ")" expression)  function-exp)
     (expression ("unic" (arbno identifier "="  expression "," ) "in" expression ) unic-exp)
     (expression ("sequence" expression (arbno ";" expression) "end") sequence-exp) 
     (expression ("if" expr-bool "then" expression "else" expression "end") if-exp)
@@ -286,14 +286,34 @@
                         (eval-expression arg1 env)
                         (eval-expression arg2 env)))
        
-       (var-exp (id val exp)
-                (eval-expression exp (extend-env id (extraer-valores val) (empty-env)))
-                )
-       (if-exp (exp-bool expr-t expr-f)
+      (var-exp (ids rands body)
+                (let
+                    ((args (eval-rands rands env)))
+                    (eval-expression body
+                                  (extend-env ids args env))))
+       
+      (if-exp (exp-bool expr-t expr-f)
                (if(eval-exp-bool exp-bool env)
                    (eval-expression expr-t env)
                    (eval-expression expr-f env)))
-       (cond-exp (exp-bool exp else-exp) (eval-cond exp-bool exp else-exp env))
+      (cond-exp
+        (exp-bool exp else-exp)
+        (eval-cond exp-bool exp else-exp env))
+
+      (function-exp (ids body)
+                (closure ids body env))
+       
+      (eval-exp (rator rands)
+                (let ((function (eval-expression rator env))
+                     (args (eval-rands rands env)))
+                 (if (functionval? function)
+                     (apply-function function args)
+                     (eopl:error 'eval-expression
+                                 "Attempt to apply non-function ~s" function))))
+
+      (rec-exp (function-names idss bodies letrec-body)
+               (eval-expression letrec-body
+                   (extend-env-recursively function-names idss bodies env)))
        
       (else #t)
        
@@ -306,6 +326,17 @@
   (lambda (glb)
     (cases global glb
       (global-exp (vars values) vars))))
+
+
+; funciones auxiliares para aplicar eval-expression a cada elemento de una 
+; lista de operandos (expresiones)
+(define eval-rands
+  (lambda (rands env)
+    (map (lambda (x) (eval-rand x env)) rands)))
+
+(define eval-rand
+  (lambda (rand env)
+    (eval-expression rand env)))
 
 ;apply-primitive: <primitiva> <list-of-expression> -> numero
 (define apply-primitive
@@ -392,7 +423,20 @@
                     )
   )
 
+;*******************************************************************************************
+;Procedimientos
+(define-datatype functionval functionval?
+  (closure
+   (ids (list-of symbol?))
+   (body expression?)
+   (env environment?)))
 
+;apply-function: evalua el cuerpo de un procedimientos en el ambiente extendido correspondiente
+(define apply-function
+  (lambda (function args)
+    (cases functionval function
+      (closure (ids body env)
+               (eval-expression body (extend-env ids args env))))))
 
 
 ;*******************************************************************************************
@@ -406,13 +450,17 @@
      '(4 2 5)
      (empty-env))))
 
+
 ;definición del tipo de dato ambiente
 (define-datatype environment environment?
   (empty-env-record)
   (extended-env-record (syms (list-of symbol?))
                        (vals (list-of scheme-value?))
-
-                       (env environment?)))
+                       (env environment?))
+  (recursively-extended-env-record (function-names (list-of symbol?))
+                                   (idss (list-of (list-of symbol?)))
+                                   (bodies (list-of expression?))
+                                   (env environment?)))
 
 (define scheme-value? (lambda (v) #t))
 
@@ -427,19 +475,34 @@
 ;función que crea un ambiente extendido
 (define extend-env
   (lambda (syms vals env)
-    (extended-env-record syms vals env))) 
+    (extended-env-record syms vals env)))
+
+
+;extend-env-recursively: <list-of symbols> <list-of <list-of symbols>> <list-of expressions> environment -> environment
+;función que crea un ambiente extendido para procedimientos recursivos
+(define extend-env-recursively
+  (lambda (function-names idss bodies old-env)
+    (recursively-extended-env-record
+     function-names idss bodies old-env)))
 
 ;función que busca un símbolo en un ambiente
 (define apply-env
   (lambda (env sym)
     (cases environment env
       (empty-env-record ()
-                        (eopl:error 'apply-env "No binding for ~s" sym))
-      (extended-env-record (syms vals env)
+                        (eopl:error 'empty-env "No binding for ~s" sym))
+      (extended-env-record (syms vals old-env)
                            (let ((pos (list-find-position sym syms)))
                              (if (number? pos)
                                  (list-ref vals pos)
-                                 (apply-env env sym)))))))
+                                 (apply-env old-env sym))))
+      (recursively-extended-env-record (function-names idss bodies old-env)
+                                       (let ((pos (list-find-position sym function-names)))
+                                         (if (number? pos)
+                                             (closure (list-ref idss pos)
+                                                      (list-ref bodies pos)
+                                                      env)
+                                             (apply-env old-env sym)))))))
 
 
 

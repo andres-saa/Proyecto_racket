@@ -1,0 +1,31 @@
+var (
+$mif = function($x, $y) ($x + $y)
+)
+in
+($mif 5 10)
+
+
+rec 
+$mif($x, $y) = 
+cond
+[compare($y == 1) 1]
+else
+($x * eval($mif ($y - 1))
+in
+print(eval($mif 2 10))
+end
+
+
+rec 
+$mif($x, $y) = 
+cond
+[compare($y == 1) 1]
+else
+($x * eval($mif ($y - 1))
+in
+var (
+$resultado = eval($mif 2 10)
+)
+in
+$resultado
+end
