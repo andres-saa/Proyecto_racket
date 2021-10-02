@@ -290,13 +290,11 @@
                 (eval-expression exp (extend-env id (extraer-valores val) (empty-env)))
                 )
        (if-exp (exp-bool expr-t expr-f)
-               (if(eval-exp-bool exp-bool env)
+               (if (and (eval-exp-bool exp-bool env))
                    (eval-expression expr-t env)
                    (eval-expression expr-f env)))
-       (cond-exp (exp-bool exp else-exp) (eval-cond exp-bool exp else-exp env))
        
       (else #t)
-       
       )
     ))
 
@@ -317,8 +315,8 @@
       (primitive-mult () (* arg1 arg2))
       (primitive-div  () (/ arg1 arg2))
       (primitive-sum-oct () (+_oct arg1 arg2 ))
-      (primitive-subt-oct ()(-_oct arg1 ))
-      (primitive-mult-oct () (*_oct arg1 arg2))
+      (primitive-subt-oct ()(octal->decimal (-_oct (octal->list arg1) (octal->list arg2) )))
+      (primitive-mult-oct () (octal->decimal (*_oct (octal->list arg1) (octal->list arg2))))
      ; (primitive-div-oct  () (/-oct arg1 arg2))
       
       (else #t))))
@@ -380,17 +378,7 @@
                                (number-lit (datum) datum)
                              (else #f)
                              
-                                ) (extraer-valores (cdr lst))))))
-
-(define eval-cond (lambda (lst-exp-bool lst-exp else-exp env)
-                    (if (null? lst-exp)
-                        (eval-expression else-exp env)
-                        (if (eqv? (eval-exp-bool (car lst-exp-bool) env) #t)
-                             (eval-expression (car lst-exp) env)
-                             (eval-cond (cdr lst-exp-bool ) (cdr lst-exp) else-exp env))
-                        )
-                    )
-  )
+                                ) (extraer-valores (cdr lst)))))) 
 
 
 
@@ -506,8 +494,6 @@
           [else ;para cualquier otro caso, resta 1 al elemento y lo une con el resto de la lista
                (cons (- (car n) 1)
                      (cdr n))]) )))
-
-
 (define +_oct
   (lambda (x y)
     (if (is-zero? y)
@@ -545,6 +531,25 @@
 
 
 ;==========================================================================================
+;+_oct de octales
+
+;===========================================================================
+
+(define retirar-base (lambda (oct)
+                      (substring oct  3 (- (string-length oct) 1))
+                       ))
+
+(define comblis (lambda (str inicio)
+                  (cond
+                    [(equal? str "") '()]
+                    [(equal? inicio (- (string-length str) 1)) (cons (string->number (string (string-ref str (- (string-length str) 1) ))) '() )]
+                    [ (cons  (string->number (string (string-ref str inicio))) (comblis str (+ inicio 2)) )]
+                        )
+ ))
+
+(define octal->list (lambda (str)
+                     (comblis (retirar-base str) 0 )
+                     ))
 
 
 
