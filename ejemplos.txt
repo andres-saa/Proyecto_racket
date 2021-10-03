@@ -29,3 +29,13 @@ $resultado = eval($mif 2 10)
 in
 $resultado
 end
+
+
+//ejemplo sequence
+var($uno=1, $dos=2, $tres=3)
+in
+sequence
+if compare($uno==$dos) then 2 else $tres end;
+(2+2);
+print($dos)
+end
