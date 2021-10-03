@@ -1,31 +1,30 @@
 var (
-$mif = function($x, $y) ($x + $y)
+    $mif = function($x, $y) ($x + $y)
 )
 in
-($mif 5 10)
+    eval($mif 5 10)
 
 
 rec 
-$mif($x, $y) = 
-cond
-[compare($y == 1) 1]
-else
-($x * eval($mif ($y - 1))
+    $mif($x, $y) = 
+        cond
+            [compare($y == 1) 1]
+            else
+                ($x * eval($mif $x ($y ~ 1)))
 in
-print(eval($mif 2 10))
+    eval($mif 2 5)
 end
 
 
-rec 
-$mif($x, $y) = 
-cond
-[compare($y == 1) 1]
-else
-($x * eval($mif ($y - 1))
+rec
+	$factorial($x)=  
+	    cond
+	      [compare($x == 0) 1]
+	      [compare($x == 1) 1]
+	    else
+	      ($x * eval($factorial ($x ~ 1)))
 in
-var (
-$resultado = eval($mif 2 10)
-)
-in
-$resultado
+	eval($factorial 5)
 end
+
+
