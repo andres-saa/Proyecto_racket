@@ -314,11 +314,15 @@
       (rec-exp (function-names idss bodies letrec-body)
                (eval-expression letrec-body
                    (extend-env-recursively function-names idss bodies env)))
-       
+
+      (sequence-exp (expression1 expressiones) (eval-sequence expression1 expressiones env))
+
       (else #t)
        
       )
     ))
+
+
 
 
 ; Evaluar la declaraciones global
@@ -423,6 +427,32 @@
                     )
   )
 
+;avaluacion de una secuencia
+(define eval-sequence (lambda (exp1 exprs env)
+                        (if (null? exprs)
+                            (eval-expression exp1 env)
+                            (eval-sequence-aux (cons exp1 exprs) env)
+                            )
+                            
+                            )
+                        )
+
+(define eval-sequence-aux (lambda (exprs env)
+                            (if
+                             (null? (cdr exprs))
+                             (eval-expression (car exprs) env)
+                            (begin
+                              (eval-expression (car exprs) env)
+                              (eval-sequence-aux (cdr exprs) env)
+                              ))))
+                              
+
+
+
+
+
+
+
 ;*******************************************************************************************
 ;Procedimientos
 (define-datatype functionval functionval?
@@ -462,7 +492,7 @@
                                    (bodies (list-of expression?))
                                    (env environment?)))
 
-(define scheme-value? (lambda (v) #t))
+  (define scheme-value? (lambda (v) #t))
 
 ;empty-env:      -> enviroment
 ;función que crea un ambiente vacío
