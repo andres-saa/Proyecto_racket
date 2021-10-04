@@ -113,9 +113,9 @@
     (expression ("@"identifier) ref-id-exp)
     (expression (string) string-lit)
     (expression (char) char-lit)
-    (expression (list) list-exp)
-    (expression (vector) vec-exp)
-    (expression (register) reg-exp)
+    (expression (mlist) list-exp)
+    (expression (mvector) vec-exp)
+    (expression (mregister) reg-exp)
     (expression (expr-bool) expr-bool-exp)
     (expression (C-VID-VAL) c-vid-val-exp)
     (expression ("print" "(" expression ")") print-exp)
@@ -136,7 +136,7 @@
     (expression ("[" identifier primitive-unary-operator "]")  prim-unary-com-exp)
     (expression (primitive-unary "(" ( separated-list expression ",") ")")  prim-unary-exp)
     (expression (primitive-unary-list "(" expression ")") prim-unary-list-exp)
-    (expression (primitive-unary-list-cre "(" expression  list ")" ) prim-binary-compound-exp )
+    (expression (primitive-unary-list-cre "(" expression  mlist ")" ) prim-binary-compound-exp )
     (expression (primitive-unary-vector-ref "(" expression number ")" ) prim-unary-vecref-exp )
     (expression (primitive-unary-vector-set "(" expression number expression ")" ) prim-unary-vecset-exp )
     (expression (primitive-unary-register-cre "(" expression "," expression ")" ) prim-unary-regcre-exp )
@@ -145,9 +145,9 @@
     (expression (primitive-unary-pre "(" expression ")") prim-unary-vecpre-exp)
     (expression ("list-position" "(" expression "," expression ")") list-position-exp)
 
-    (list ("list" "[" (separated-list expression ";")  "]") def-list) 
-    (vector ("vector" "[" (separated-list expression ";")  "]") def-vector)
-    (register ("register" "{" (separated-list string "=" expression ";")  "}") def-register)
+    (mlist ("list" "[" (separated-list expression ";")  "]") def-list) 
+    (mvector ("vector" "[" (separated-list expression ";")  "]") def-vector)
+    (mregister ("register" "{" (separated-list string "=" expression ";")  "}") def-register)
     (C-VID-VAL ("C-VID-VAL") def-c-vid-val)
     
     (expr-bool ("compare" "("  expression pred-prim expression ")") compare-exp-bool)
@@ -256,15 +256,33 @@
 ;eval-program: <programa> -> numero
 ; función que evalúa un programa teniendo en cuenta un ambiente dado (se inicializa dentro del programa)
 
+
 (define eval-program
   (lambda (pgm)
     (cases program pgm
       (a-global-program  (global body) global)
       (a-program (body)
-                 (eval-expression body (init-env)))
-      )
+                 (eval-expression body (init-env))))))
 
-    ))
+; Ambiente inicial
+;(define init-env
+;  (lambda ()
+;    (extend-env
+;     '(x y z)
+;     '(4 2 5)
+;     (empty-env))))
+
+(define init-env
+  (lambda ()
+    (extend-env
+     '($i $v $x)
+     '(1 5 10)
+     (empty-env))))
+
+
+
+
+
 ; videos del 08-03-21 (DD-MM-AA)
 ; eval-expression: <expression> <enviroment> -> numero
 ; evalua la expresión en el ambiente de entrada
@@ -455,15 +473,6 @@
 
 ;*******************************************************************************************
 ;Ambientes
-
-; Ambiente inicial
-(define init-env
-  (lambda ()
-    (extend-env
-     '(i v x)
-     '(1 5 10)
-     (empty-env))))
-
 
 ;definición del tipo de dato ambiente
 (define-datatype environment environment?
