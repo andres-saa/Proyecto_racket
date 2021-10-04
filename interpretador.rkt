@@ -195,7 +195,6 @@
     (primitive-unary-vector-ref ("ref-vector") primitive-ref-vector)
     (primitive-unary-vector-set ("set-vector") primitive-set-vector)
     
-    
     ;; primiivas para registros
     (primitive-unary-register-cre ("create-register") primitive-cr-register)
     (primitive-unary-register-ref ("ref-register") primitive-ref-register)
@@ -260,27 +259,29 @@
 (define eval-program
   (lambda (pgm)
     (cases program pgm
-      (a-global-program  (global body) global)
+      (a-global-program  (global body)
+                         (eval-global global body))
       (a-program (body)
                  (eval-expression body (init-env))))))
 
-; Ambiente inicial
-;(define init-env
-;  (lambda ()
-;    (extend-env
-;     '(x y z)
-;     '(4 2 5)
-;     (empty-env))))
 
+; Evaluar la declaraciones global
+(define eval-global
+  (lambda (glb body)
+    (cases global glb
+      (global-exp (ids rands)
+                  (let
+                    ((args (eval-rands rands (init-env))))
+                    (eval-expression body
+                       (extend-env ids args (init-env))))))))
+
+; Ambiente inicial
 (define init-env
   (lambda ()
     (extend-env
      '($i $v $x)
      '(1 5 10)
      (empty-env))))
-
-
-
 
 
 ; videos del 08-03-21 (DD-MM-AA)
@@ -353,13 +354,6 @@
     ))
 
 
-; Evaluar la declaraciones global
-(define eval-global
-  (lambda (glb)
-    (cases global glb
-      (global-exp (vars values) vars))))
-
-
 ; funciones auxiliares para aplicar eval-expression a cada elemento de una 
 ; lista de operandos (expresiones)
 (define eval-rands
@@ -387,7 +381,7 @@
       (else #t))))
 
 
-
+; Evaluar expresiones booleanas
 (define eval-exp-bool (lambda (e-bool env)
                         (cases expr-bool e-bool
                           (compare-exp-bool (exp1 prim exp2) (
@@ -417,7 +411,7 @@
                           (oper-un-exp-bool (oper exp) (not (eval-exp-bool exp env) ))
                           )))
 
-
+; auxiliares para expresiones booleanas
 (define diferent? (lambda (a b)
                     (if (equal? a b)
                         #f
@@ -434,17 +428,7 @@
               
               ))
 
-(define extraer-valores (lambda(lst)
-                          (if
-                             (null? lst)
-                             '()
-                             
-                             (cons (cases expression (car lst)
-                               (number-lit (datum) datum)
-                             (else #f)
-                             
-                                ) (extraer-valores (cdr lst))))))
-
+; Evaluar condicion
 (define eval-cond (lambda (lst-exp-bool lst-exp else-exp env)
                     (if (null? lst-exp)
                         (eval-expression else-exp env)
@@ -599,7 +583,10 @@
                 #f))))))
 
 
-;interfaz bignum======================================================================================
+;======================================================================================
+
+;interfaz bignum
+
 (define zero (lambda () '()))
 (define is-zero? (lambda (n) (null? n)))
 
@@ -641,14 +628,12 @@
                (cons (- (car n) 1)
                      (cdr n))]) )))
 
-
+; octales
 (define +_oct
   (lambda (x y)
     (if (is-zero? y)
         x
         (successor (+_oct (successor x) (predecessor y))))))
-
-
 
 
 (define -_oct

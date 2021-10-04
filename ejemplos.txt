@@ -27,4 +27,11 @@ in
 	eval($factorial 5)
 end
 
+global ($pi=3.14, $saludo="Hola")
+var (
+$mif = function($z) ($pi * $z)
+)
+in
+eval($mif 8)
+
 
